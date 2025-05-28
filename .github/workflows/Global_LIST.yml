@@ -41,7 +41,9 @@ jobs:
           
           echo "下载失败的总数: $failed_count" >> "$failed_log"
           touch "$failed_log"
-
+          # 去重并输出为 Global_LIST.conf
+          sort -u output/temp_list.txt > output/Global_LIST.conf
+          rm output/temp_list.txt
  
           # 提交更改
           - name: Commit changes
