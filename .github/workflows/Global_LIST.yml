@@ -17,7 +17,7 @@ jobs:
 
       - name: 下载 Global_Compilation.txt
         run: |
-          curl -L -o Global_Compilation.txt "https://raw.githubusercontent.com/cs2021hv001/Global_Compilation/refs/heads/main/Global_urls.txt"
+          curl -L -o Global_Compilation.txt "https://raw.githubusercontent.com/siren202101/Global_Compilation/main/Global_Compilation.txt"
 
       - name: 读取链接并下载文件
         run: |
@@ -41,19 +41,31 @@ jobs:
           
           echo "下载失败的总数: $failed_count" >> "$failed_log"
           touch "$failed_log"
+
+      - name: 下载并合并 gfw.txt
+        run: |
+          mkdir -p output
+          
+          # 处理 merged.txt，去掉 DOMAIN-SUFFIX, 前缀
+          grep '^DOMAIN-SUFFIX,' downloaded_files/merged.txt | sed 's/^DOMAIN-SUFFIX,//' > output/temp_list.txt
+          
+          # 下载 gfw.txt 并追加
+          curl -L -o downloaded_files/gfw.txt "https://fastly.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/gfw.txt"
+          cat downloaded_files/gfw.txt >> output/temp_list.txt
+
           # 去重并输出为 Global_LIST.conf
           sort -u output/temp_list.txt > output/Global_LIST.conf
           rm output/temp_list.txt
  
           # 提交更改
-          - name: Commit changes
-            run: |
-              git config --global user.name 'GitHub Action'
-              git config --global user.email 'action@github.com'
-              # 强制更新文件时间戳，确保每次运行都提交
-              touch output/Global_LIST.conf logs/Global_downloads.log
-              git add output/Global_LIST.conf logs/Global_downloads.log
-              git commit -m "Update Global_LIST.conf and Global_downloads.log for run at $(date -u)" || echo "No changes to commit"
-              git push
-            env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit changes
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          # 强制更新文件时间戳，确保每次运行都提交
+          touch output/Global_LIST.conf logs/Global_downloads.log
+          git add output/Global_LIST.conf logs/Global_downloads.log
+          git commit -m "Update Global_LIST.conf and Global_downloads.log for run at $(date -u)" || echo "No changes to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
