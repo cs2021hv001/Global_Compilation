@@ -42,20 +42,6 @@ jobs:
           echo "下载失败的总数: $failed_count" >> "$failed_log"
           touch "$failed_log"
 
-      - name: 下载并合并 gfw.txt
-        run: |
-          mkdir -p output
-          
-          # 处理 merged.txt，去掉 DOMAIN-SUFFIX, 前缀
-          grep '^DOMAIN-SUFFIX,' downloaded_files/merged.txt | sed 's/^DOMAIN-SUFFIX,//' > output/temp_list.txt
-          
-          # 下载 gfw.txt 并追加
-          curl -L -o downloaded_files/gfw.txt "https://fastly.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/gfw.txt"
-          cat downloaded_files/gfw.txt >> output/temp_list.txt
-
-          # 去重并输出为 Global_LIST.conf
-          sort -u output/temp_list.txt > output/Global_LIST.conf
-          rm output/temp_list.txt
  
           # 提交更改
           - name: Commit changes
