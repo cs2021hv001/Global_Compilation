@@ -16,7 +16,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 设置 Python 环境
+    # 设置 Python 环境（备用，当前脚本无需 Python，但保留以便未来扩展）
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -31,6 +31,9 @@ jobs:
     # 下载 Global_urls.txt 并处理
     - name: Download and process URLs
       run: |
+        # 初始化日志文件，确保每次运行都更新
+        echo "Download log for run at $(date -u)" > logs/Global_failed_downloads.log
+
         # 下载主列表
         wget -O Global_urls.txt https://raw.githubusercontent.com/cs2021hv001/Global_Compilation/refs/heads/main/Global_urls.txt || echo "Failed to download Global_urls.txt" >> logs/Global_failed_downloads.log
 
@@ -62,17 +65,15 @@ jobs:
         # 清理临时文件
         rm temp_*.txt temp_merged.txt temp_cleaned.txt
 
-    # 强制更新 cn_list.conf（即使内容未变）
-    - name: Copy Global_List.conf to cn_list.conf
-      run: cp output/Global_List.conf output/cn_list.conf
-
     # 提交更改
     - name: Commit changes
       run: |
         git config --global user.name 'GitHub Action'
         git config --global user.email 'action@github.com'
-        git add output/Global_List.conf output/cn_list.conf logs/Global_failed_downloads.log
-        git commit -m "Update Global_List.conf, cn_list.conf and logs" || echo "No changes to commit"
+        # 强制更新文件时间戳，确保每次运行都提交
+        touch output/Global_List.conf logs/Global_failed_downloads.log
+        git add output/Global_List.conf logs/Global_failed_downloads.log
+        git commit -m "Update Global_List.conf and Global_failed_downloads.log for run at $(date -u)" || echo "No changes to commit"
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
