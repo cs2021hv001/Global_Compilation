@@ -1,0 +1,78 @@
+name: Process Global URLs
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *' # 每天 UTC 时间 00:00 运行
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  process-urls:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 检出代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 设置 Python 环境
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    # 创建必要的目录
+    - name: Create directories
+      run: |
+        mkdir -p output
+        mkdir -p logs
+
+    # 下载 Global_urls.txt 并处理
+    - name: Download and process URLs
+      run: |
+        # 下载主列表
+        wget -O Global_urls.txt https://raw.githubusercontent.com/cs2021hv001/Global_Compilation/refs/heads/main/Global_urls.txt || echo "Failed to download Global_urls.txt" >> logs/Global_failed_downloads.log
+
+        # 创建临时文件存储合并结果
+        touch temp_merged.txt
+
+        # 读取 Global_urls.txt 中的每个 URL 并下载
+        while IFS= read -r url; do
+          # 跳过空行
+          if [ -z "$url" ]; then
+            continue
+          fi
+          # 下载每个 URL 的内容
+          filename=$(basename "$url")
+          if wget -O "temp_$filename" "$url"; then
+            # 处理文件：删除注释、DOMAIN-、IP- 开头的行
+            sed '/^#/d; /^DOMAIN-/d; /^IP-/d' "temp_$filename" >> temp_merged.txt
+          else
+            echo "Failed to download $url" >> logs/Global_failed_downloads.log
+          fi
+        done < Global_urls.txt
+
+        # 处理合并后的文件：删除 server=/ 和 /114.114.114.114
+        sed '/server=\//d; /\/114\.114\.114\.114/d' temp_merged.txt > temp_cleaned.txt
+
+        # 去重并生成最终文件
+        sort temp_cleaned.txt | uniq > output/Global_List.conf
+
+        # 清理临时文件
+        rm temp_*.txt temp_merged.txt temp_cleaned.txt
+
+    # 强制更新 cn_list.conf（即使内容未变）
+    - name: Copy Global_List.conf to cn_list.conf
+      run: cp output/Global_List.conf output/cn_list.conf
+
+    # 提交更改
+    - name: Commit changes
+      run: |
+        git config --global user.name 'GitHub Action'
+        git config --global user.email 'action@github.com'
+        git add output/Global_List.conf output/cn_list.conf logs/Global_failed_downloads.log
+        git commit -m "Update Global_List.conf, cn_list.conf and logs" || echo "No changes to commit"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
